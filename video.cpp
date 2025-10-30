@@ -4,13 +4,23 @@ void initSDL()
 {
     SDL_Init(SDL_INIT_VIDEO);
 
+    // Request OpenGL 3.3 Core Profile for macOS compatibility
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+
+    // Optional but recommended attributes
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+
     window = SDL_CreateWindow(
         "OpenGL Game Engine",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         WINDOW_WIDTH,
         WINDOW_HEIGHT,
-        SDL_WINDOW_OPENGL
+        SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI  // High DPI support for Retina displays
     );
     #ifdef SET_FULLSCREEN
         SDL_SetWindowFullscreen(window, SDL_TRUE);
@@ -18,35 +28,46 @@ void initSDL()
     if (window == nullptr)
     {
         std::cerr << "Couldn't create Window. ERROR: " << SDL_GetError() << std::endl;
+        exit(1);
     }
-    SDL_GL_SetSwapInterval(0);
+
     glcontext = SDL_GL_CreateContext(window);
     if (glcontext == nullptr)
     {
         std::cerr << "Couldn't create OpenGL context. ERROR: " << SDL_GetError() << std::endl;
+        exit(1);
     }
+
+    SDL_GL_SetSwapInterval(0);
 }
 
 void initGL()
 {
+    glewExperimental = GL_TRUE;
+    GLenum err = glewInit();
+    if (err != GLEW_OK) {
+        std::cerr << "GLEW initialization failed: " << glewGetErrorString(err) << std::endl;
+        exit(1);
+    }
+
+    // Print OpenGL version for debugging
+    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "GLSL Version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+    std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
+
     glClearColor(bgcol[0], bgcol[1], bgcol[2], 1.0f);
     glClearDepth(1.0f);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
-    glShadeModel(GL_SMOOTH);
-    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+    // Removed: glShadeModel(GL_SMOOTH) - not available in Core Profile
+    // Removed: glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST) - ignored in Core Profile
     glViewport(0,0, WINDOW_WIDTH, WINDOW_HEIGHT);
-
-    glewExperimental = GL_TRUE;
-    glewInit();
 }
 
 void clearWindow()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(60.0f, WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 300.0f);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    // Removed legacy fixed-function pipeline code:
+    // - glMatrixMode(), glLoadIdentity(), gluPerspective()
+    // Modern pipeline handles all transformations via shaders and uniforms
 }
